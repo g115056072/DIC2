@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>50 Startups — ML Feature Selection Dashboard</title>
+  <meta name="description" content="Interactive dashboard comparing feature selection methods and RMSE for the 50 Startups linear regression model." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-badge">ML Dashboard</div>
+    <h1>50 Startups — Feature Selection &amp; Profit Predictor</h1>
+    <p class="subtitle">
+      Comprehensive comparison of feature selection methods and RMSE analysis
+      for a multiple linear regression model.
+    </p>
+    <!-- Model summary pills -->
+    <div class="pill-row">
+      <span class="pill">
+        <span class="pill-label">Full Model RMSE</span>
+        <span class="pill-value">${{ "{:,.0f}".format(base_metrics.get('full_model', {}).get('RMSE', 0)) }}</span>
+      </span>
+      <span class="pill">
+        <span class="pill-label">Full Model R²</span>
+        <span class="pill-value">{{ base_metrics.get('full_model', {}).get('R2', '—') }}</span>
+      </span>
+      <span class="pill">
+        <span class="pill-label">Baseline RMSE</span>
+        <span class="pill-value">${{ "{:,.0f}".format(base_metrics.get('baseline', {}).get('RMSE', 0)) }}</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="main-content">
+
+  <!-- ── SECTION 1: RMSE vs # Features ─────────────────────────────────── -->
+  <section class="card" id="rmse-section">
+    <div class="card-header">
+      <div class="card-icon icon-purple">📉</div>
+      <div>
+        <h2>RMSE vs. Number of Features</h2>
+        <p class="card-desc">Best subset (lowest test RMSE) for each feature count from 1 to {{ rmse_by_n|length }}.</p>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <!-- Chart -->
+      <div class="chart-wrap">
+        <canvas id="rmseLineChart" height="250"></canvas>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th># Features</th>
+              <th>Best Features</th>
+              <th>RMSE ($)</th>
+              <th>R²</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rmse_by_n %}
+            <tr>
+              <td class="center badge-cell">
+                <span class="n-badge">{{ row.n_features }}</span>
+              </td>
+              <td class="features-cell">{{ row.best_subset_str }}</td>
+              <td class="mono highlight">{{ "{:,.2f}".format(row.RMSE) }}</td>
+              <td class="mono">{{ row.R2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 2: Feature Selection Method Comparison ────────────────── -->
+  <section class="card" id="selection-section">
+    <div class="card-header">
+      <div class="card-icon icon-cyan">🔬</div>
+      <div>
+        <h2>Feature Selection Method Comparison</h2>
+        <p class="card-desc">RMSE and selected features from LassoCV, RFECV, SFS, ElasticNetCV, and Exhaustive Search.</p>
+      </div>
+    </div>
+
+    <!-- Method RMSE bar chart -->
+    <div class="chart-wrap chart-full">
+      <canvas id="selectionRmseChart" height="130"></canvas>
+    </div>
+
+    <!-- Method table -->
+    <div class="table-wrap table-full">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th># Selected</th>
+            <th>Selected Features</th>
+            <th>RMSE ($)</th>
+            <th>MAE ($)</th>
+            <th>R²</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in feature_sel %}
+          {% set best_rmse = feature_sel | map(attribute='RMSE') | min %}
+          <tr {% if row.RMSE == best_rmse %}class="best-row"{% endif %}>
+            <td class="method-name">
+              {{ row.Method }}
+              {% if row.RMSE == best_rmse %}<span class="best-tag">Best</span>{% endif %}
+            </td>
+            <td class="center">{{ row['N Features'] }}</td>
+            <td class="features-cell">{{ row['Selected Features'] }}</td>
+            <td class="mono highlight">{{ "{:,.2f}".format(row.RMSE) }}</td>
+            <td class="mono">{{ "{:,.2f}".format(row.MAE) }}</td>
+            <td class="mono">{{ row.R2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── SECTION 3: EDA Charts ─────────────────────────────────────────── -->
+  <section class="card" id="eda-section">
+    <div class="card-header">
+      <div class="card-icon icon-green">📊</div>
+      <div>
+        <h2>Exploratory Data Analysis</h2>
+        <p class="card-desc">Key visualizations from the 50 Startups dataset.</p>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <figure class="chart-fig">
+        <img src="{{ url_for('static', filename='charts/profit_distribution.png') }}" alt="Profit Distribution" loading="lazy" />
+        <figcaption>Profit Distribution</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        <img src="{{ url_for('static', filename='charts/correlation_matrix.png') }}" alt="Correlation Matrix" loading="lazy" />
+        <figcaption>Correlation Matrix</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        <img src="{{ url_for('static', filename='charts/actual_vs_predicted.png') }}" alt="Actual vs Predicted" loading="lazy" />
+        <figcaption>Actual vs. Predicted</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        <img src="{{ url_for('static', filename='charts/residuals.png') }}" alt="Residuals" loading="lazy" />
+        <figcaption>Residuals vs. Predicted</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        <img src="{{ url_for('static', filename='charts/rmse_by_n_features.png') }}" alt="RMSE by N Features" loading="lazy" />
+        <figcaption>RMSE vs. # Features</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        <img src="{{ url_for('static', filename='charts/feature_selection_rmse.png') }}" alt="Selection Method RMSE" loading="lazy" />
+        <figcaption>Method RMSE Comparison</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ── SECTION 4: Model Coefficients ─────────────────────────────────── -->
+  <section class="card" id="coefs-section">
+    <div class="card-header">
+      <div class="card-icon icon-yellow">⚖️</div>
+      <div>
+        <h2>Full Model Coefficients</h2>
+        <p class="card-desc">
+          Intercept: <strong class="mono">${{ "{:,.2f}".format(base_metrics.get('intercept', 0)) }}</strong>
+        </p>
+      </div>
+    </div>
+
+    {% if base_metrics.get('coefficients') %}
+    <div class="coef-grid">
+      {% for feat, coef in base_metrics['coefficients'].items() %}
+      <div class="coef-card {% if coef > 0 %}pos{% else %}neg{% endif %}">
+        <div class="coef-feature">{{ feat.replace('num__','').replace('cat__','') }}</div>
+        <div class="coef-value mono">{{ "{:+,.4f}".format(coef) }}</div>
+        <div class="coef-bar-wrap">
+          <div class="coef-bar" style="width:{{ [([coef|abs / 0.8, 100]|min), 5]|max }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ── SECTION 5: Profit Predictor ───────────────────────────────────── -->
+  <section class="card" id="predict-section">
+    <div class="card-header">
+      <div class="card-icon icon-pink">🚀</div>
+      <div>
+        <h2>Startup Profit Predictor</h2>
+        <p class="card-desc">Enter your startup details to estimate profit using the full Linear Regression model.</p>
+      </div>
+    </div>
+
+    <form id="predictForm" class="predict-form" novalidate>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="rd_spend">R&amp;D Spend ($)</label>
+          <input type="number" id="rd_spend" name="rd_spend" min="0" step="1000"
+                 placeholder="e.g. 100000" value="100000" required />
+        </div>
+        <div class="form-group">
+          <label for="admin">Administration ($)</label>
+          <input type="number" id="admin" name="admin" min="0" step="1000"
+                 placeholder="e.g. 120000" value="120000" required />
+        </div>
+        <div class="form-group">
+          <label for="marketing">Marketing Spend ($)</label>
+          <input type="number" id="marketing" name="marketing" min="0" step="1000"
+                 placeholder="e.g. 200000" value="200000" required />
+        </div>
+        <div class="form-group">
+          <label for="state">State</label>
+          <select id="state" name="state">
+            <option value="New York">New York</option>
+            <option value="California">California</option>
+            <option value="Florida">Florida</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="predict-btn" id="predictBtn">
+        <span class="btn-text">Predict Profit</span>
+        <span class="btn-spinner" hidden>⏳</span>
+      </button>
+    </form>
+
+    <div id="predictResult" class="predict-result" hidden>
+      <div class="result-label">Estimated Profit</div>
+      <div class="result-value" id="resultValue">—</div>
+      <div class="result-note">Based on all features (R&amp;D, Admin, Marketing, State)</div>
+    </div>
+
+    <div id="predictError" class="predict-error" hidden></div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>50 Startups Dataset · Multiple Linear Regression · Feature Selection Analysis</p>
+  <p>LassoCV · RFECV · SFS · ElasticNetCV · Exhaustive FS</p>
+</footer>
+
+<!-- ── CHART.JS SCRIPTS ────────────────────────────────────────────────────── -->
+<script>
+// ─ Shared chart defaults ────────────────────────────────────────────────────
+Chart.defaults.color = "#cbd5e1";
+Chart.defaults.font.family = "Inter, sans-serif";
+
+// ─ RMSE Line Chart ─────────────────────────────────────────────────────────
+const rmseData = {{ rmse_by_n | tojson }};
+const rmseCtx = document.getElementById("rmseLineChart").getContext("2d");
+
+new Chart(rmseCtx, {
+  type: "line",
+  data: {
+    labels: rmseData.map(d => `${d.n_features} feature${d.n_features > 1 ? "s" : ""}`),
+    datasets: [{
+      label: "Best Subset RMSE ($)",
+      data: rmseData.map(d => d.RMSE),
+      borderColor: "#a855f7",
+      backgroundColor: "rgba(168,85,247,0.15)",
+      fill: true,
+      tension: 0.4,
+      pointRadius: 7,
+      pointHoverRadius: 10,
+      pointBackgroundColor: "#a855f7",
+      borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` RMSE: $${ctx.parsed.y.toLocaleString("en-US", {maximumFractionDigits: 0})}`,
+          afterLabel: ctx => {
+            const row = rmseData[ctx.dataIndex];
+            return ` Features: ${Array.isArray(row.best_subset) ? row.best_subset.join(", ") : row.best_subset_str}`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        grid: { color: "rgba(255,255,255,0.07)" },
+        ticks: { callback: v => "$" + (v/1000).toFixed(0) + "k" }
+      },
+      x: { grid: { color: "rgba(255,255,255,0.07)" } }
+    }
+  }
+});
+
+// ─ Feature Selection RMSE Bar Chart ────────────────────────────────────────
+const selData = {{ feature_sel | tojson }};
+const selCtx  = document.getElementById("selectionRmseChart").getContext("2d");
+
+const methodColors = [
+  "rgba(168,85,247,0.85)",
+  "rgba(6,182,212,0.85)",
+  "rgba(16,185,129,0.85)",
+  "rgba(245,158,11,0.85)",
+  "rgba(239,68,68,0.85)"
+];
+
+new Chart(selCtx, {
+  type: "bar",
+  data: {
+    labels: selData.map(d => d.Method),
+    datasets: [
+      {
+        label: "RMSE ($)",
+        data: selData.map(d => d.RMSE),
+        backgroundColor: methodColors,
+        borderColor: methodColors.map(c => c.replace("0.85", "1")),
+        borderWidth: 1.5,
+        borderRadius: 6
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` RMSE: $${ctx.parsed.y.toLocaleString("en-US", {maximumFractionDigits: 0})}`,
+          afterLabel: ctx => {
+            const row = selData[ctx.dataIndex];
+            return [
+              ` Selected: ${row["Selected Features"]}`,
+              ` R²: ${row.R2}`
+            ];
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        grid: { color: "rgba(255,255,255,0.07)" },
+        ticks: { callback: v => "$" + (v/1000).toFixed(0) + "k" }
+      },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// ─ Predict Form ────────────────────────────────────────────────────────────
+document.getElementById("predictForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn     = document.getElementById("predictBtn");
+  const btnText = btn.querySelector(".btn-text");
+  const spinner = btn.querySelector(".btn-spinner");
+  const result  = document.getElementById("predictResult");
+  const errDiv  = document.getElementById("predictError");
+
+  btnText.hidden = true;
+  spinner.hidden = false;
+  btn.disabled   = true;
+  result.hidden  = true;
+  errDiv.hidden  = true;
+
+  const payload = {
+    rd_spend:  parseFloat(document.getElementById("rd_spend").value) || 0,
+    admin:     parseFloat(document.getElementById("admin").value) || 0,
+    marketing: parseFloat(document.getElementById("marketing").value) || 0,
+    state:     document.getElementById("state").value
+  };
+
+  try {
+    const resp = await fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      document.getElementById("resultValue").textContent =
+        "$" + data.profit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      result.hidden = false;
+      result.classList.add("fade-in");
+    } else {
+      errDiv.textContent = "Prediction error: " + data.error;
+      errDiv.hidden = false;
+    }
+  } catch (err) {
+    errDiv.textContent = "Network error: " + err.message;
+    errDiv.hidden = false;
+  } finally {
+    btnText.hidden = false;
+    spinner.hidden = true;
+    btn.disabled   = false;
+  }
+});
+</script>
+
+</body>
+</html>
