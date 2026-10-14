@@ -321,7 +321,7 @@
         <thead><tr><th>Rank</th><th>Sample ID</th><th>Actual profit</th><th>Predicted profit</th><th>Residual</th><th>Abs. error</th><th>% error</th><th>Status</th></tr></thead>
         <tbody>
         {% for row in diagnostics.diagnostics %}
-          <tr><td>#{{ row.rank }}</td><td>Startup #{{ row.sample_id }}</td><td class="mono">${{ "{:,.2f}".format(row.actual) }}</td><td class="mono">${{ "{:,.2f}".format(row.predicted) }}</td><td class="mono {% if row.residual < 0 %}negative{% else %}positive{% endif %}">{{ "{:+,.2f}".format(row.residual) }}</td><td class="mono">${{ "{:,.2f}".format(row.abs_error) }}</td><td>{{ "{:.2f}".format(row.percent_error) }}%</td><td><span class="status-tag {% if row.status == 'High Residual' %}status-high{% else %}status-ok{% endif %}">{{ row.status }}</span></td></tr>
+          <tr><td>#{{ row.rank }}</td><td>#{{ row.sample_id }}</td><td class="mono">${{ "{:,.2f}".format(row.actual) }}</td><td class="mono">${{ "{:,.2f}".format(row.predicted) }}</td><td class="mono {% if row.residual < 0 %}negative{% else %}positive{% endif %}">{{ "{:+,.2f}".format(row.residual) }}</td><td class="mono">${{ "{:,.2f}".format(row.abs_error) }}</td><td>{{ "{:.2f}".format(row.percent_error) }}%</td><td><span class="status-tag {% if row.status == 'High Residual' %}status-high{% else %}status-ok{% endif %}">{{ row.status }}</span></td></tr>
         {% endfor %}
         </tbody>
       </table>
