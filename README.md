@@ -3,12 +3,17 @@
 A multiple linear regression project on the 50 Startups dataset with comprehensive feature
 selection analysis and an interactive Flask web dashboard.
 
+Live website: https://dic-2-alpha.vercel.app/
+
 ## Features
 
 - **RMSE Comparison** — best-subset search for 1 to 5 features
 - **5 Feature Selection Methods**: LassoCV, RFECV, SFS, ElasticNetCV, Exhaustive Search
 - **Interactive Web Dashboard** — dark glassmorphism UI with Chart.js visualisations
 - **Live Profit Predictor** — enter startup details and get an instant profit estimate
+- **Feature Selection Explorer** — switch between methods and feature counts with live RMSE/R² summaries
+- **Statistical Diagnostics** — fitted equation, coefficient standard errors, confidence intervals, t-statistics, and VIF
+- **Test-set Outlier Review** — ranked residuals with absolute and percentage errors
 
 ## Project Structure
 

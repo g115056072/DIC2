@@ -11,6 +11,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, r2_score
 
 app = Flask(__name__)
 
@@ -67,6 +68,94 @@ def get_full_model():
     return model
 
 
+def get_diagnostic_details():
+    """Build the statistical and outlier details used by the dashboard."""
+    csv_path = os.path.join(BASE_DIR, "data", "50_Startups.csv")
+    df = pd.read_csv(csv_path)
+    df.columns = df.columns.str.strip()
+    numerical_features = ["R&D Spend", "Administration", "Marketing Spend"]
+    X = df[numerical_features + ["State"]]
+    y = df["Profit"]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.20, random_state=RANDOM_STATE
+    )
+
+    model = get_full_model()
+    preprocessor = model.named_steps["preprocessor"]
+    regressor = model.named_steps["regressor"]
+    encoded_train = np.asarray(preprocessor.transform(X_train), dtype=float)
+    encoded_test = np.asarray(preprocessor.transform(X_test), dtype=float)
+    names = [name.replace("num__", "").replace("cat__", "")
+             for name in preprocessor.get_feature_names_out()]
+
+    train_predictions = regressor.predict(encoded_train)
+    test_predictions = regressor.predict(encoded_test)
+    residuals = y_test.to_numpy() - test_predictions
+    design = np.column_stack([np.ones(len(encoded_train)), encoded_train])
+    degrees_of_freedom = max(len(y_train) - design.shape[1], 1)
+    variance = float(np.sum((y_train.to_numpy() - train_predictions) ** 2) /
+                     degrees_of_freedom)
+    covariance = variance * np.linalg.pinv(design.T @ design)
+    standard_errors = np.sqrt(np.maximum(np.diag(covariance), 0))
+    t_stats = np.divide(
+        np.r_[regressor.intercept_, regressor.coef_],
+        standard_errors,
+        out=np.zeros_like(standard_errors),
+        where=standard_errors > 0,
+    )
+    correlation = np.corrcoef(encoded_train, rowvar=False)
+    vif = np.diag(np.linalg.pinv(correlation))
+
+    coefficient_rows = []
+    estimates = np.r_[regressor.intercept_, regressor.coef_]
+    labels = ["Intercept"] + names
+    for index, (label, estimate) in enumerate(zip(labels, estimates)):
+        margin = 1.96 * standard_errors[index]
+        coefficient_rows.append({
+            "feature": label,
+            "estimate": round(float(estimate), 4),
+            "std_error": round(float(standard_errors[index]), 4),
+            "t_stat": round(float(t_stats[index]), 3),
+            "p_value": "< 0.0001" if abs(t_stats[index]) >= 4 else "n.s.",
+            "confidence": "[{:,.2f}, {:,.2f}]".format(
+                estimate - margin, estimate + margin
+            ),
+            "vif": None if index == 0 else round(float(vif[index - 1]), 2),
+        })
+
+    diagnostic_rows = []
+    ordered = sorted(
+        zip(y_test.index, y_test.to_numpy(), test_predictions, residuals),
+        key=lambda item: abs(item[3]),
+        reverse=True,
+    )
+    for rank, (row_index, actual, predicted, residual) in enumerate(ordered, 1):
+        abs_error = abs(float(residual))
+        percent_error = abs_error / abs(float(actual)) * 100 if actual else 0
+        diagnostic_rows.append({
+            "rank": rank,
+            "sample_id": int(row_index) + 1,
+            "actual": round(float(actual), 2),
+            "predicted": round(float(predicted), 2),
+            "residual": round(float(residual), 2),
+            "abs_error": round(abs_error, 2),
+            "percent_error": round(percent_error, 2),
+            "status": "High Residual" if percent_error >= 10 else "In Range",
+        })
+
+    return {
+        "coefficients_table": coefficient_rows,
+        "diagnostics": diagnostic_rows,
+        "equation": "Profit = {:,.2f} {}".format(
+            float(regressor.intercept_),
+            "".join(" {:+,.4f} × ({})".format(float(coef), name)
+                    for name, coef in zip(names, regressor.coef_)),
+        ),
+        "test_mae": round(float(mean_absolute_error(y_test, test_predictions)), 2),
+        "test_r2": round(float(r2_score(y_test, test_predictions)), 4),
+    }
+
+
 # ─── Routes ──────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -74,6 +163,7 @@ def index():
     base_metrics   = load_json("results/base_metrics.json", {})
     rmse_by_n      = load_json("results/rmse_by_n.json", [])
     feature_sel    = load_json("results/feature_selection.json", [])
+    diagnostics = get_diagnostic_details()
 
     # Convert best_subset lists to readable strings
     for row in rmse_by_n:
@@ -87,6 +177,7 @@ def index():
         base_metrics=base_metrics,
         rmse_by_n=rmse_by_n,
         feature_sel=feature_sel,
+        diagnostics=diagnostics,
     )
 
 

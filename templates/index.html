@@ -41,6 +41,42 @@
 
 <main class="main-content">
 
+  <section class="card explorer-card" id="explorer-section">
+    <div class="card-header">
+      <div class="card-icon icon-purple">🧭</div>
+      <div>
+        <h2>Feature Selection Explorer</h2>
+        <p class="card-desc">Switch between selection methods and feature counts to inspect the best-performing model.</p>
+      </div>
+    </div>
+    <div class="selector-grid">
+      <div>
+        <label class="selector-label" for="methodSelector">Selection algorithm</label>
+        <div class="selector-buttons" id="methodSelector">
+          <button class="selector-btn active" data-method="all">Compare all methods</button>
+          {% for row in feature_sel %}
+          <button class="selector-btn" data-method="{{ row.Method }}">{{ row.Method }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label class="selector-label" for="featureSelector">Number of features</label>
+        <div class="selector-buttons" id="featureSelector">
+          {% for row in rmse_by_n %}
+          <button class="selector-btn feature-btn {% if row.n_features == 1 %}active{% endif %}" data-features="{{ row.n_features }}">k = {{ row.n_features }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="insight-grid">
+      <div class="insight-card"><span>Selected RMSE</span><strong id="selectedRmse">—</strong><small>Lower is better</small></div>
+      <div class="insight-card"><span>R² score</span><strong id="selectedR2">—</strong><small>Explained variance</small></div>
+      <div class="insight-card"><span>Active predictors</span><strong id="selectedFeatures">—</strong><small id="selectedFeatureNames">Choose a feature count</small></div>
+      <div class="insight-card"><span>Model signal</span><strong id="modelSignal">—</strong><small id="modelSignalNote">Compare the available models</small></div>
+    </div>
+    <div class="equation-box"><span>Fitted OLS regression equation</span><strong>{{ diagnostics.equation }}</strong></div>
+  </section>
+
   <!-- ── SECTION 1: RMSE vs # Features ─────────────────────────────────── -->
   <section class="card" id="rmse-section">
     <div class="card-header">
@@ -197,6 +233,26 @@
     {% endif %}
   </section>
 
+  <section class="card" id="stats-section">
+    <div class="card-header">
+      <div class="card-icon icon-cyan">📐</div>
+      <div>
+        <h2>Model Coefficients &amp; Statistical Tests</h2>
+        <p class="card-desc">Parameter estimates, uncertainty, significance, and multicollinearity indicators for the full model.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table stats-table">
+        <thead><tr><th>Predictor</th><th>Estimate (β)</th><th>Std. Error</th><th>t-stat</th><th>p-value</th><th>95% confidence interval</th><th>VIF</th></tr></thead>
+        <tbody>
+        {% for row in diagnostics.coefficients_table %}
+          <tr><td><strong>{{ row.feature }}</strong></td><td class="mono">{{ "{:+,.4f}".format(row.estimate) }}</td><td class="mono">{{ "{:,.4f}".format(row.std_error) }}</td><td class="mono">{{ "{:,.3f}".format(row.t_stat) }}</td><td>{{ row.p_value }}</td><td class="mono">{{ row.confidence }}</td><td>{% if row.vif is not none %}{{ "{:.2f}".format(row.vif) }}{% else %}—{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- ── SECTION 5: Profit Predictor ───────────────────────────────────── -->
   <section class="card" id="predict-section">
     <div class="card-header">
@@ -247,6 +303,26 @@
     </div>
 
     <div id="predictError" class="predict-error" hidden></div>
+  </section>
+
+  <section class="card" id="diagnostics-section">
+    <div class="card-header">
+      <div class="card-icon icon-yellow">🔎</div>
+      <div>
+        <h2>Test Set Residuals &amp; Outlier Diagnostics</h2>
+        <p class="card-desc">Top absolute residuals on the held-out test set, sorted by error magnitude.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table diagnostics-table">
+        <thead><tr><th>Rank</th><th>Sample ID</th><th>Actual profit</th><th>Predicted profit</th><th>Residual</th><th>Abs. error</th><th>% error</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for row in diagnostics.diagnostics %}
+          <tr><td>#{{ row.rank }}</td><td>Startup #{{ row.sample_id }}</td><td class="mono">${{ "{:,.2f}".format(row.actual) }}</td><td class="mono">${{ "{:,.2f}".format(row.predicted) }}</td><td class="mono {% if row.residual < 0 %}negative{% else %}positive{% endif %}">{{ "{:+,.2f}".format(row.residual) }}</td><td class="mono">${{ "{:,.2f}".format(row.abs_error) }}</td><td>{{ "{:.2f}".format(row.percent_error) }}%</td><td><span class="status-tag {% if row.status == 'High Residual' %}status-high{% else %}status-ok{% endif %}">{{ row.status }}</span></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
 </main>
@@ -360,6 +436,40 @@ new Chart(selCtx, {
     }
   }
 });
+
+// Explorer controls keep the existing charts and tables useful as an interactive view.
+const rmseRows = {{ rmse_by_n | tojson }};
+const methodButtons = document.querySelectorAll("[data-method]");
+const featureButtons = document.querySelectorAll("[data-features]");
+const money = value => "$" + Number(value).toLocaleString("en-US", {maximumFractionDigits: 2});
+function updateExplorer() {
+  const method = document.querySelector("[data-method].active").dataset.method;
+  const features = Number(document.querySelector("[data-features].active").dataset.features);
+  const selected = method === "all"
+    ? rmseRows.find(row => row.n_features === features)
+    : selData.find(row => row.Method === method);
+  if (!selected) return;
+  document.getElementById("selectedRmse").textContent = money(selected.RMSE);
+  document.getElementById("selectedR2").textContent = Number(selected.R2).toFixed(4);
+  const names = selected.best_subset || String(selected["Selected Features"] || "").split(", ");
+  document.getElementById("selectedFeatures").textContent = names.length;
+  document.getElementById("selectedFeatureNames").textContent = names.join(" · ");
+  document.getElementById("modelSignal").textContent =
+    Number(selected.R2) >= 0.9 ? "Strong fit" : "Needs review";
+  document.getElementById("modelSignalNote").textContent =
+    method === "all" ? "Best subset at this k" : method + " result";
+}
+methodButtons.forEach(button => button.addEventListener("click", () => {
+  document.querySelectorAll("[data-method]").forEach(item => item.classList.remove("active"));
+  button.classList.add("active");
+  updateExplorer();
+}));
+featureButtons.forEach(button => button.addEventListener("click", () => {
+  document.querySelectorAll("[data-features]").forEach(item => item.classList.remove("active"));
+  button.classList.add("active");
+  updateExplorer();
+}));
+updateExplorer();
 
 // ─ Predict Form ────────────────────────────────────────────────────────────
 document.getElementById("predictForm").addEventListener("submit", async (e) => {
