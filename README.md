@@ -14,6 +14,7 @@ Live website: https://dic-2-alpha.vercel.app/
 - **Feature Selection Explorer** — switch between methods and feature counts with live RMSE/R² summaries
 - **Statistical Diagnostics** — fitted equation, coefficient standard errors, confidence intervals, t-statistics, and VIF
 - **Test-set Outlier Review** — ranked residuals with absolute and percentage errors
+- **Dataset switcher** — compare 50 Startups, Boston Housing, or any public raw CSV URL
 
 ## Project Structure
 

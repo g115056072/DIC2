@@ -69,6 +69,14 @@ p  { color: var(--text-secondary); }
 
 .header-inner { position: relative; max-width: 900px; margin: 0 auto; }
 
+.dataset-picker { align-items: center; display: flex; flex-wrap: wrap; gap: .6rem; justify-content: center; margin: 1rem auto 0; position: relative; }
+.dataset-picker label { color: var(--text-secondary); font-size: .82rem; font-weight: 700; }
+.dataset-picker select, .dataset-picker input { background: rgba(255,255,255,.08); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font: inherit; padding: .55rem .75rem; }
+.dataset-picker input { min-width: min(360px, 80vw); }
+.dataset-picker select option { background: #1e1b3a; }
+.dataset-load { background: var(--purple); border: 0; border-radius: 999px; color: #fff; cursor: pointer; font: inherit; padding: .55rem 1rem; }
+.dataset-error { background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.35); border-radius: var(--radius-sm); color: #fca5a5; margin: 1rem auto 0; max-width: 700px; padding: .6rem 1rem; position: relative; }
+
 .header-badge {
   display: inline-block;
   background: linear-gradient(90deg, var(--purple), var(--cyan));
@@ -260,6 +268,7 @@ p  { color: var(--text-secondary); }
   text-align: center;
   border-top: 1px solid var(--glass-border);
 }
+.chart-fig canvas { display: block; height: 260px !important; padding: 1rem; width: 100% !important; }
 
 /* ── Coefficient Cards ───────────────────────────────────────────── */
 .coef-grid {

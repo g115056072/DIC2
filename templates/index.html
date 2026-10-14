@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>50 Startups — ML Feature Selection Dashboard</title>
+  <title>{{ dashboard.dataset_label }} — ML Feature Selection Dashboard</title>
   <meta name="description" content="Interactive dashboard comparing feature selection methods and RMSE for the 50 Startups linear regression model." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -16,11 +16,22 @@
 <header class="site-header">
   <div class="header-inner">
     <div class="header-badge">ML Dashboard</div>
-    <h1>50 Startups — Feature Selection &amp; Profit Predictor</h1>
+    <h1>{{ dashboard.dataset_label }} — Feature Selection &amp; Predictor</h1>
     <p class="subtitle">
       Comprehensive comparison of feature selection methods and RMSE analysis
-      for a multiple linear regression model.
+      for a multiple linear regression model. Target: <strong>{{ dashboard.target }}</strong>
     </p>
+    <form class="dataset-picker" method="get">
+      <label for="dataset">Dataset</label>
+      <select id="dataset" name="dataset" onchange="this.form.submit()">
+        <option value="startups" {% if selected_dataset == 'startups' %}selected{% endif %}>50 Startups</option>
+        <option value="boston" {% if selected_dataset == 'boston' %}selected{% endif %}>Boston Housing</option>
+        <option value="custom" {% if selected_dataset == 'custom' %}selected{% endif %}>Custom CSV</option>
+      </select>
+      <input type="url" name="custom_url" value="{{ custom_url }}" placeholder="https://.../data.csv" aria-label="Raw CSV URL" {% if selected_dataset != 'custom' %}hidden{% endif %}>
+      {% if selected_dataset == 'custom' %}<button class="dataset-load" type="submit">Load CSV</button>{% endif %}
+    </form>
+    {% if error %}<div class="dataset-error">{{ error }}</div>{% endif %}
     <!-- Model summary pills -->
     <div class="pill-row">
       <span class="pill">
@@ -180,28 +191,28 @@
     </div>
     <div class="charts-grid">
       <figure class="chart-fig">
-        <img src="{{ url_for('static', filename='charts/profit_distribution.png') }}" alt="Profit Distribution" loading="lazy" />
-        <figcaption>Profit Distribution</figcaption>
+        <canvas id="targetDistributionChart"></canvas>
+        <figcaption>{{ dashboard.target }} Distribution</figcaption>
       </figure>
       <figure class="chart-fig">
-        <img src="{{ url_for('static', filename='charts/correlation_matrix.png') }}" alt="Correlation Matrix" loading="lazy" />
-        <figcaption>Correlation Matrix</figcaption>
+        <canvas id="predictionChart"></canvas>
+        <figcaption>Actual vs. Predicted {{ dashboard.target }}</figcaption>
       </figure>
       <figure class="chart-fig">
-        <img src="{{ url_for('static', filename='charts/actual_vs_predicted.png') }}" alt="Actual vs Predicted" loading="lazy" />
-        <figcaption>Actual vs. Predicted</figcaption>
+        <canvas id="residualChart"></canvas>
+        <figcaption>Test-set Residuals</figcaption>
       </figure>
       <figure class="chart-fig">
-        <img src="{{ url_for('static', filename='charts/residuals.png') }}" alt="Residuals" loading="lazy" />
-        <figcaption>Residuals vs. Predicted</figcaption>
+        <canvas id="rmseChart"></canvas>
+        <figcaption>RMSE by Feature Count</figcaption>
       </figure>
       <figure class="chart-fig">
-        <img src="{{ url_for('static', filename='charts/rmse_by_n_features.png') }}" alt="RMSE by N Features" loading="lazy" />
-        <figcaption>RMSE vs. # Features</figcaption>
+        <canvas id="methodChart"></canvas>
+        <figcaption>Selection Method RMSE</figcaption>
       </figure>
       <figure class="chart-fig">
-        <img src="{{ url_for('static', filename='charts/feature_selection_rmse.png') }}" alt="Selection Method RMSE" loading="lazy" />
-        <figcaption>Method RMSE Comparison</figcaption>
+        <canvas id="r2Chart"></canvas>
+        <figcaption>R² by Feature Count</figcaption>
       </figure>
     </div>
   </section>
@@ -258,36 +269,20 @@
     <div class="card-header">
       <div class="card-icon icon-pink">🚀</div>
       <div>
-        <h2>Startup Profit Predictor</h2>
-        <p class="card-desc">Enter your startup details to estimate profit using the full Linear Regression model.</p>
+        <h2>{{ dashboard.target }} Predictor</h2>
+        <p class="card-desc">Enter predictor values to estimate {{ dashboard.target }} using the full Linear Regression model.</p>
       </div>
     </div>
 
     <form id="predictForm" class="predict-form" novalidate>
       <div class="form-grid">
+        {% for predictor in dashboard.predictors %}
         <div class="form-group">
-          <label for="rd_spend">R&amp;D Spend ($)</label>
-          <input type="number" id="rd_spend" name="rd_spend" min="0" step="1000"
-                 placeholder="e.g. 100000" value="100000" required />
+          <label for="predictor-{{ loop.index }}">{{ predictor }}</label>
+          <input type="text" id="predictor-{{ loop.index }}" data-predictor="{{ predictor }}"
+                 placeholder="Enter {{ predictor }}" required />
         </div>
-        <div class="form-group">
-          <label for="admin">Administration ($)</label>
-          <input type="number" id="admin" name="admin" min="0" step="1000"
-                 placeholder="e.g. 120000" value="120000" required />
-        </div>
-        <div class="form-group">
-          <label for="marketing">Marketing Spend ($)</label>
-          <input type="number" id="marketing" name="marketing" min="0" step="1000"
-                 placeholder="e.g. 200000" value="200000" required />
-        </div>
-        <div class="form-group">
-          <label for="state">State</label>
-          <select id="state" name="state">
-            <option value="New York">New York</option>
-            <option value="California">California</option>
-            <option value="Florida">Florida</option>
-          </select>
-        </div>
+        {% endfor %}
       </div>
 
       <button type="submit" class="predict-btn" id="predictBtn">
@@ -299,7 +294,7 @@
     <div id="predictResult" class="predict-result" hidden>
       <div class="result-label">Estimated Profit</div>
       <div class="result-value" id="resultValue">—</div>
-      <div class="result-note">Based on all features (R&amp;D, Admin, Marketing, State)</div>
+      <div class="result-note">Based on all {{ dashboard.predictors|length }} predictors in the active dataset</div>
     </div>
 
     <div id="predictError" class="predict-error" hidden></div>
@@ -437,6 +432,53 @@ new Chart(selCtx, {
   }
 });
 
+const dashboardData = {{ dashboard | tojson }};
+const chartData = dashboardData.eda;
+new Chart(document.getElementById("targetDistributionChart"), {
+  type: "bar",
+  data: { labels: chartData.target_values.map((_, i) => i + 1),
+    datasets: [{ label: chartData.target, data: chartData.target_values,
+      backgroundColor: "rgba(16,185,129,.35)", borderColor: "#10b981", borderWidth: 1 }] },
+  options: { plugins: { legend: { display: false } },
+    scales: { x: { title: { display: true, text: "Observation" } },
+      y: { title: { display: true, text: chartData.target } } } }
+});
+new Chart(document.getElementById("predictionChart"), {
+  type: "scatter",
+  data: { datasets: [{ label: "Actual vs predicted", data: chartData.actual.map((x, i) => ({x, y: chartData.predicted[i]})),
+    backgroundColor: "#06b6d4" }] },
+  options: { scales: { x: { title: { display: true, text: "Actual" } },
+    y: { title: { display: true, text: "Predicted" } } } }
+});
+new Chart(document.getElementById("residualChart"), {
+  type: "bar",
+  data: { labels: dashboardData.diagnostics.map(row => "#" + row.sample_id),
+    datasets: [{ label: "Residual", data: dashboardData.diagnostics.map(row => row.residual),
+      backgroundColor: dashboardData.diagnostics.map(row => row.residual < 0 ? "#ef4444" : "#10b981") }] },
+  options: { plugins: { legend: { display: false } } }
+});
+new Chart(document.getElementById("rmseChart"), {
+  type: "line",
+  data: { labels: rmseData.map(row => "k=" + row.n_features),
+    datasets: [{ label: "RMSE", data: rmseData.map(row => row.RMSE),
+      borderColor: "#a855f7", backgroundColor: "rgba(168,85,247,.15)", fill: true }] },
+  options: { plugins: { legend: { display: false } } }
+});
+new Chart(document.getElementById("methodChart"), {
+  type: "bar",
+  data: { labels: selData.map(row => row.Method),
+    datasets: [{ label: "RMSE", data: selData.map(row => row.RMSE),
+      backgroundColor: ["#a855f7", "#06b6d4"] }] },
+  options: { plugins: { legend: { display: false } } }
+});
+new Chart(document.getElementById("r2Chart"), {
+  type: "line",
+  data: { labels: rmseData.map(row => "k=" + row.n_features),
+    datasets: [{ label: "R²", data: rmseData.map(row => row.R2),
+      borderColor: "#10b981", backgroundColor: "rgba(16,185,129,.15)", fill: true }] },
+  options: { plugins: { legend: { display: false } } }
+});
+
 // Explorer controls keep the existing charts and tables useful as an interactive view.
 const rmseRows = {{ rmse_by_n | tojson }};
 const methodButtons = document.querySelectorAll("[data-method]");
@@ -487,10 +529,11 @@ document.getElementById("predictForm").addEventListener("submit", async (e) => {
   errDiv.hidden  = true;
 
   const payload = {
-    rd_spend:  parseFloat(document.getElementById("rd_spend").value) || 0,
-    admin:     parseFloat(document.getElementById("admin").value) || 0,
-    marketing: parseFloat(document.getElementById("marketing").value) || 0,
-    state:     document.getElementById("state").value
+    dataset: "{{ selected_dataset }}",
+    custom_url: {{ custom_url | tojson }},
+    features: Object.fromEntries([...document.querySelectorAll("[data-predictor]")].map(input => [
+      input.dataset.predictor, input.value
+    ]))
   };
 
   try {
