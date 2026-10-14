@@ -21,14 +21,14 @@
       Comprehensive comparison of feature selection methods and RMSE analysis
       for a multiple linear regression model. Target: <strong>{{ dashboard.target }}</strong>
     </p>
-    <form class="dataset-picker" method="get">
+    <form class="dataset-picker" method="get" id="datasetForm">
       <label for="dataset">Dataset</label>
-      <select id="dataset" name="dataset" onchange="this.form.submit()">
+      <select id="dataset" name="dataset">
         <option value="startups" {% if selected_dataset == 'startups' %}selected{% endif %}>50 Startups</option>
         <option value="boston" {% if selected_dataset == 'boston' %}selected{% endif %}>Boston Housing</option>
         <option value="custom" {% if selected_dataset == 'custom' %}selected{% endif %}>Custom CSV</option>
       </select>
-      <input type="url" name="custom_url" value="{{ custom_url }}" placeholder="https://.../data.csv" aria-label="Raw CSV URL" {% if selected_dataset != 'custom' %}hidden{% endif %}>
+      <input type="url" id="customUrl" name="custom_url" value="{{ custom_url }}" placeholder="https://.../data.csv" aria-label="Raw CSV URL" {% if selected_dataset != 'custom' %}hidden{% endif %}>
       {% if selected_dataset == 'custom' %}<button class="dataset-load" type="submit">Load CSV</button>{% endif %}
     </form>
     {% if error %}<div class="dataset-error">{{ error }}</div>{% endif %}
@@ -49,6 +49,14 @@
     </div>
   </div>
 </header>
+
+<div class="loading-overlay" id="loadingOverlay" aria-live="polite" aria-busy="false" hidden>
+  <div class="loading-panel">
+    <div class="loading-spinner"></div>
+    <strong>Recalculating dashboard</strong>
+    <span>Loading the selected dataset and fitting the models…</span>
+  </div>
+</div>
 
 <main class="main-content">
 
@@ -509,9 +517,30 @@ methodButtons.forEach(button => button.addEventListener("click", () => {
 featureButtons.forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll("[data-features]").forEach(item => item.classList.remove("active"));
   button.classList.add("active");
+  document.querySelectorAll("[data-method]").forEach(item => item.classList.remove("active"));
+  document.querySelector("[data-method='all']").classList.add("active");
   updateExplorer();
 }));
 updateExplorer();
+
+const datasetForm = document.getElementById("datasetForm");
+const datasetSelect = document.getElementById("dataset");
+const customUrl = document.getElementById("customUrl");
+const loadingOverlay = document.getElementById("loadingOverlay");
+function showLoading() {
+  loadingOverlay.hidden = false;
+  loadingOverlay.setAttribute("aria-busy", "true");
+}
+datasetSelect.addEventListener("change", () => {
+  customUrl.hidden = datasetSelect.value !== "custom";
+  if (datasetSelect.value !== "custom") {
+    showLoading();
+    datasetForm.submit();
+  } else {
+    customUrl.focus();
+  }
+});
+datasetForm.addEventListener("submit", showLoading);
 
 // ─ Predict Form ────────────────────────────────────────────────────────────
 document.getElementById("predictForm").addEventListener("submit", async (e) => {

@@ -25,7 +25,7 @@ DATASETS = {
     },
     "boston": {
         "label": "Boston Housing",
-        "source": "https://raw.githubusercontent.com/selva86/datasets/master/BostonHousing.csv",
+        "source": os.path.join(BASE_DIR, "data", "BostonHousing.csv"),
     },
 }
 
@@ -100,6 +100,8 @@ def analyze_dataset(dataset_key, custom_url=None):
     train_predictions = model.predict(X_train)
     predictions = model.predict(X_test)
     full_metrics = metrics(y_test, predictions)
+    baseline_predictions = np.full(len(y_test), float(y_train.mean()))
+    baseline_metrics = metrics(y_test, baseline_predictions)
 
     preprocessor = model.named_steps["preprocessor"]
     regressor = model.named_steps["regressor"]
@@ -181,7 +183,7 @@ def analyze_dataset(dataset_key, custom_url=None):
     return {
         "dataset_label": label, "target": target, "predictors": predictors,
         "feature_names": names, "row_count": len(df),
-        "base_metrics": {"full_model": full_metrics, "baseline": {},
+        "base_metrics": {"full_model": full_metrics, "baseline": baseline_metrics,
                          "intercept": float(regressor.intercept_)},
         "coefficients": coefficients, "coefficient_rows": coefficient_rows,
         "diagnostics": diagnostic_rows, "equation": equation,
