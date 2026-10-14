@@ -3,6 +3,8 @@
 A multiple linear regression project on the 50 Startups dataset with comprehensive feature
 selection analysis and an interactive Flask web dashboard.
 
+Live website: https://dic-2-alpha.vercel.app/
+
 ## Features
 
 - **RMSE Comparison** — best-subset search for 1 to 5 features
