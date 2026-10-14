@@ -129,7 +129,7 @@
               <td class="center badge-cell">
                 <span class="n-badge">{{ row.n_features }}</span>
               </td>
-              <td class="features-cell">{{ row.best_subset_str }}</td>
+              <td class="features-cell">{{ row.best_subset | join(", ") }}</td>
               <td class="mono highlight">{{ "{:,.2f}".format(row.RMSE) }}</td>
               <td class="mono">{{ row.R2 }}</td>
             </tr>
@@ -476,7 +476,7 @@ new Chart(document.getElementById("methodChart"), {
   type: "bar",
   data: { labels: selData.map(row => row.Method),
     datasets: [{ label: "RMSE", data: selData.map(row => row.RMSE),
-      backgroundColor: ["#a855f7", "#06b6d4"] }] },
+      backgroundColor: ["#a855f7", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"] }] },
   options: { plugins: { legend: { display: false } } }
 });
 new Chart(document.getElementById("r2Chart"), {

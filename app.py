@@ -11,6 +11,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import RFECV, SequentialFeatureSelector
+from sklearn.linear_model import ElasticNetCV, LassoCV
+from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
@@ -106,6 +109,7 @@ def analyze_dataset(dataset_key, custom_url=None):
     preprocessor = model.named_steps["preprocessor"]
     regressor = model.named_steps["regressor"]
     encoded_train = np.asarray(preprocessor.transform(X_train), dtype=float)
+    encoded_test = np.asarray(preprocessor.transform(X_test), dtype=float)
     names = [name.replace("num__", "").replace("cat__", "")
              for name in preprocessor.get_feature_names_out()]
     coefficients = dict(zip(names, regressor.coef_.tolist()))
@@ -151,6 +155,80 @@ def analyze_dataset(dataset_key, custom_url=None):
             "status": "High Residual" if percentage >= 10 else "In Range",
         })
 
+    def evaluate_subset(indices, method):
+        indices = list(indices)
+        selected_model = LinearRegression().fit(
+            encoded_train[:, indices], y_train
+        )
+        selected_predictions = selected_model.predict(encoded_test[:, indices])
+        result = metrics(y_test, selected_predictions)
+        return {
+            "Method": method,
+            "Selected Features": ", ".join(names[i] for i in indices),
+            "N Features": len(indices),
+            **result,
+        }
+
+    selection_results = []
+
+    lasso = LassoCV(cv=5, random_state=RANDOM_STATE, max_iter=10000)
+    lasso.fit(encoded_train, y_train)
+    lasso_indices = np.flatnonzero(lasso.coef_)
+    if len(lasso_indices) == 0:
+        lasso_indices = np.array([np.argmax(np.abs(lasso.coef_))])
+    selection_results.append(evaluate_subset(lasso_indices, "LassoCV"))
+
+    rfecv = RFECV(
+        estimator=LinearRegression(), cv=5,
+        scoring="neg_root_mean_squared_error", min_features_to_select=1,
+    )
+    rfecv.fit(encoded_train, y_train)
+    selection_results.append(
+        evaluate_subset(np.flatnonzero(rfecv.support_), "RFECV")
+    )
+
+    sfs = SequentialFeatureSelector(
+        LinearRegression(), n_features_to_select="auto", tol=1e-3,
+        direction="forward", cv=5, scoring="neg_root_mean_squared_error",
+    )
+    sfs.fit(encoded_train, y_train)
+    selection_results.append(
+        evaluate_subset(np.flatnonzero(sfs.get_support()), "SFS (Forward)")
+    )
+
+    elastic_net = ElasticNetCV(
+        cv=5, l1_ratio=[0.1, 0.5, 0.7, 0.9, 0.95, 1.0],
+        random_state=RANDOM_STATE, max_iter=10000,
+    )
+    elastic_net.fit(encoded_train, y_train)
+    elastic_indices = np.flatnonzero(elastic_net.coef_)
+    if len(elastic_indices) == 0:
+        elastic_indices = np.array([np.argmax(np.abs(elastic_net.coef_))])
+    selection_results.append(
+        evaluate_subset(elastic_indices, "ElasticNetCV")
+    )
+
+    # Exhaustive search is bounded for wide datasets so a custom CSV cannot
+    # make a request take exponentially long.
+    exhaustive_candidates = np.arange(len(names))
+    if len(exhaustive_candidates) > 10:
+        correlations = np.abs(np.corrcoef(
+            np.column_stack([encoded_train, y_train.to_numpy()]), rowvar=False
+        )[:-1, -1])
+        exhaustive_candidates = np.argsort(correlations)[-10:]
+    best_cv_rmse = np.inf
+    best_indices = [int(exhaustive_candidates[0])]
+    for count in range(1, len(exhaustive_candidates) + 1):
+        for subset in itertools.combinations(exhaustive_candidates, count):
+            cv_rmse = -cross_val_score(
+                LinearRegression(), encoded_train[:, subset], y_train,
+                cv=5, scoring="neg_root_mean_squared_error",
+            ).mean()
+            if cv_rmse < best_cv_rmse:
+                best_cv_rmse = cv_rmse
+                best_indices = list(subset)
+    selection_results.append(evaluate_subset(best_indices, "Exhaustive FS"))
+
     subset_rows = []
     encoded_names = names
     max_features = min(5, len(encoded_names))
@@ -158,24 +236,14 @@ def analyze_dataset(dataset_key, custom_url=None):
         best = None
         for subset in itertools.combinations(range(len(encoded_names)), count):
             reg = LinearRegression().fit(encoded_train[:, subset], y_train)
-            prediction = reg.predict(np.asarray(
-                preprocessor.transform(X_test), dtype=float)[:, subset])
+            prediction = reg.predict(encoded_test[:, subset])
             result = metrics(y_test, prediction)
             if best is None or result["RMSE"] < best["RMSE"]:
                 best = {**result, "n_features": count,
                         "best_subset": [encoded_names[i] for i in subset]}
         subset_rows.append(best)
 
-    method_rows = []
-    for method, row in [
-        ("Best Subset", min(subset_rows, key=lambda item: item["RMSE"])),
-        ("Full Model", {"best_subset": names, **full_metrics}),
-    ]:
-        method_rows.append({
-            "Method": method, "Selected Features": ", ".join(row["best_subset"]),
-            "N Features": len(row["best_subset"]), "RMSE": row["RMSE"],
-            "MAE": row["MAE"], "R2": row["R2"],
-        })
+    method_rows = selection_results
 
     equation = " = ".join([target, "{:,.2f}".format(regressor.intercept_)])
     equation += "".join(" {:+,.4f} × ({})".format(coef, name)
