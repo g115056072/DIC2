@@ -1,0 +1,52 @@
+[
+  {
+    "n_features": 1,
+    "best_subset": [
+      "R&D Spend"
+    ],
+    "RMSE": 7714.33,
+    "R2": 0.9265
+  },
+  {
+    "n_features": 2,
+    "best_subset": [
+      "R&D Spend",
+      "State_New York"
+    ],
+    "RMSE": 7718.1,
+    "R2": 0.9264
+  },
+  {
+    "n_features": 3,
+    "best_subset": [
+      "R&D Spend",
+      "State_Florida",
+      "State_New York"
+    ],
+    "RMSE": 7946.37,
+    "R2": 0.922
+  },
+  {
+    "n_features": 4,
+    "best_subset": [
+      "R&D Spend",
+      "Marketing Spend",
+      "State_Florida",
+      "State_New York"
+    ],
+    "RMSE": 8254.69,
+    "R2": 0.9159
+  },
+  {
+    "n_features": 5,
+    "best_subset": [
+      "R&D Spend",
+      "Administration",
+      "Marketing Spend",
+      "State_Florida",
+      "State_New York"
+    ],
+    "RMSE": 9055.96,
+    "R2": 0.8987
+  }
+]

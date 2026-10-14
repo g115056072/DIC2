@@ -34,7 +34,8 @@ os.makedirs("static/charts", exist_ok=True)
 os.makedirs("results", exist_ok=True)
 
 # ─── Load dataset ───────────────────────────────────────────────────────────
-df = pd.read_csv(r"C:\Users\user\Downloads\50_Startups.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "50_Startups.csv")
+df = pd.read_csv(DATA_PATH)
 df.columns = df.columns.str.strip()
 
 print("Dataset shape:", df.shape)

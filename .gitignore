@@ -12,13 +12,6 @@ venv/
 .venv/
 env/
 
-# Generated charts & results (re-run analysis.py to regenerate)
-static/charts/
-results/
-
-# Dataset (stored locally, not committed)
-*.csv
-
 # Environment
 .env
 .env.local

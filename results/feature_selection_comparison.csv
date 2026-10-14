@@ -1,0 +1,6 @@
+Method,Selected Features,N Features,RMSE,MAE,R2
+LassoCV,"['R&D Spend', 'Administration', 'Marketing Spend']",3,8995.91,6979.15,0.9001
+RFECV,"['R&D Spend', 'State_Florida', 'State_New York']",3,7946.37,6296.78,0.922
+SFS (Forward),"['R&D Spend', 'Administration']",2,9152.27,7181.33,0.8966
+ElasticNetCV,"['R&D Spend', 'Administration', 'Marketing Spend']",3,8995.91,6979.15,0.9001
+Exhaustive FS,"['R&D Spend', 'Administration']",2,9152.27,7181.33,0.8966

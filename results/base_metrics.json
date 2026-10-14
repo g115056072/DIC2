@@ -1,0 +1,25 @@
+{
+  "full_model": {
+    "MAE": 6961.48,
+    "RMSE": 9055.96,
+    "R2": 0.8987
+  },
+  "reduced_model": {
+    "MAE": 6979.15,
+    "RMSE": 8995.91,
+    "R2": 0.9001
+  },
+  "baseline": {
+    "MAE": 25295.29,
+    "RMSE": 33776.69,
+    "R2": -0.4088
+  },
+  "intercept": 54028.04,
+  "coefficients": {
+    "num__R&D Spend": 0.8056,
+    "num__Administration": -0.0688,
+    "num__Marketing Spend": 0.0299,
+    "cat__State_Florida": 938.793,
+    "cat__State_New York": 6.9878
+  }
+}

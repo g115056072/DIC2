@@ -1,0 +1,6 @@
+n_features,best_subset,RMSE,R2
+1,['R&D Spend'],7714.33,0.9265
+2,"['R&D Spend', 'State_New York']",7718.1,0.9264
+3,"['R&D Spend', 'State_Florida', 'State_New York']",7946.37,0.922
+4,"['R&D Spend', 'Marketing Spend', 'State_Florida', 'State_New York']",8254.69,0.9159
+5,"['R&D Spend', 'Administration', 'Marketing Spend', 'State_Florida', 'State_New York']",9055.96,0.8987

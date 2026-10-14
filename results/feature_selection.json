@@ -1,0 +1,42 @@
+[
+  {
+    "Method":"LassoCV",
+    "Selected Features":"R&D Spend, Administration, Marketing Spend",
+    "N Features":3,
+    "RMSE":8995.91,
+    "MAE":6979.15,
+    "R2":0.9001
+  },
+  {
+    "Method":"RFECV",
+    "Selected Features":"R&D Spend, State_Florida, State_New York",
+    "N Features":3,
+    "RMSE":7946.37,
+    "MAE":6296.78,
+    "R2":0.922
+  },
+  {
+    "Method":"SFS (Forward)",
+    "Selected Features":"R&D Spend, Administration",
+    "N Features":2,
+    "RMSE":9152.27,
+    "MAE":7181.33,
+    "R2":0.8966
+  },
+  {
+    "Method":"ElasticNetCV",
+    "Selected Features":"R&D Spend, Administration, Marketing Spend",
+    "N Features":3,
+    "RMSE":8995.91,
+    "MAE":6979.15,
+    "R2":0.9001
+  },
+  {
+    "Method":"Exhaustive FS",
+    "Selected Features":"R&D Spend, Administration",
+    "N Features":2,
+    "RMSE":9152.27,
+    "MAE":7181.33,
+    "R2":0.8966
+  }
+]
